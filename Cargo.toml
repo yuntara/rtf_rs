@@ -1,0 +1,25 @@
+[package]
+name = "rtf_rs"
+version = "0.1.0"
+authors = ["nishiyama <y.nishiyama@j-legalsystem.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+log = "0.4"
+regex = "1"
+thiserror = "1.0"
+rusoto_core = { version = "0.45.0", default_features = false, features=["rustls"]}
+rusoto_ssm = { version = "0.45.0", default_features = false, features=["rustls"]}
+tokio = "0.2"
+base64 = "0.13.0"
+rtf-grimoire = "0.1.1"
+encoding_rs = "0.8.26"
+codepage = "0.1.1"
+lazy_static = "1.2.0"
+pretty_assertions = "0.6.1"
+docx-rs = { git = "https://github.com/bokuweb/docx-rs", branch = "master" }
+
+[dev-dependencies]
+insta = "1.6.3"
