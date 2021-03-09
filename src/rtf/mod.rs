@@ -198,9 +198,9 @@ impl Rtf {
         ) -> Run {
             let mut run = Run::new();
             let text = crate::rtf::Text::decode_line(encoding, &line);
-            println!("{:?}", line.bytes);
+            /* println!("{:?}", line.bytes);
             println!("{}", text);
-            println!("{:?}", encoding);
+            println!("{:?}", encoding);*/
             run = run.add_text(text);
             if let Some(font) = line.font {
                 if let Some(font) = font_table.get(&font) {
