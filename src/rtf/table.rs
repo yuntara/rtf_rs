@@ -1,8 +1,9 @@
 pub use super::*;
+
 #[derive(Clone, Debug)]
 pub struct TableCellOption {
     pub border: Option<CellBorder>,
-    pub right: Option<usize>,
+    pub right: Option<Twips>,
 }
 impl TableCellOption {
     pub fn new() -> Self {
@@ -89,5 +90,18 @@ impl Table {
     pub fn add_cell(&mut self) {
         let row = self.last_row();
         row.add_cell();
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Twips(usize);
+impl From<usize> for Twips {
+    fn from(n: usize) -> Twips {
+        Self { 0: n }
+    }
+}
+impl Twips {
+    pub fn into_px(self) -> usize {
+        self.0 / 15
     }
 }

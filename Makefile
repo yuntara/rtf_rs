@@ -1,6 +1,7 @@
 
 lint:
 	cargo clippy --all-targets --all-features -- -D warnings
+.PHONY: test
 test:
 	cargo test
 test-nocapture:

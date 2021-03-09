@@ -1966,7 +1966,11 @@ fn control_word_ignore(_state: &mut GroupState, name: &str, _arg: Option<i32>) {
     trace!("Ignoring control word {}", name);
 }
 
-fn control_value_set_state_and_write_ansi_char(state: &mut GroupState, name: &str, arg: Option<i32>) {
+fn control_value_set_state_and_write_ansi_char(
+    state: &mut GroupState,
+    name: &str,
+    arg: Option<i32>,
+) {
     let encoding = state.get_encoding();
 
     control_symbol_write_ansi_char(state, name, arg);
@@ -2017,13 +2021,14 @@ fn control_symbol_write_ansi_char(state: &mut GroupState, name: &str, arg: Optio
 
     if let Some(bytes) = opt_bytes {
         match name {
-            "line" => state.new_line(),
+            "line" => state.new_paragraph(),
             "page" => state.new_page(),
             "sect" => state.new_section(),
             "par" => state.new_paragraph(),
             "cell" => state.add_cell(),
             "row" => state.end_row(),
-            "\n" | "\r" => { /* NOP */ }
+            "\n" => { /* NOP */ }
+            "\r" => { /* NOP */ }
             _ => state.buffer(&bytes),
         }
     }
@@ -2044,7 +2049,11 @@ fn destination_control_set_state_default(state: &mut GroupState, name: &str, _ar
     state.set_destination(name, false);
 }
 
-fn destination_control_and_value_set_state_default(state: &mut GroupState, name: &str, arg: Option<i32>) {
+fn destination_control_and_value_set_state_default(
+    state: &mut GroupState,
+    name: &str,
+    arg: Option<i32>,
+) {
     state.flush();
     state.set_destination(name, false);
     state.set_value(name, arg);

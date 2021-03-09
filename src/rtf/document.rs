@@ -24,7 +24,7 @@ impl DocumentState {
     }
 
     pub fn do_control_bin(&mut self, _data: &[u8], _word_is_optional: bool) {
-        //println!("not support do conotrol bin");
+        println!("not support do conotrol bin");
         // We don't support handling control bins
     }
 
@@ -93,7 +93,6 @@ impl DocumentState {
             last_group.flush();
         }
         if let Some(last_group) = self.get_last_group().cloned() {
-            //println!("start group{{");
             self.group_stack.push(last_group.clone());
         } else {
             debug!("Creating initial group...");
@@ -102,17 +101,8 @@ impl DocumentState {
         }
     }
     pub fn process_colortable(&mut self, group: &mut GroupState) {
-        let mut dests = self.destinations.borrow_mut();
-        let tbl = dests.get_mut("colortbl").expect("color table not exist");
-
-        if let Destination::Text(text) = tbl {
-            //println!("colortable dest : {:?}", text);
-        } else {
-            //println!("colortable dest : {:?}", tbl);
-        }
         loop {
             if let Some(color) = group.shift_color() {
-                //println!("{:?}", color);
                 self.colors.push(color);
             } else {
                 break;
@@ -129,7 +119,6 @@ impl DocumentState {
         let charset = group.values.get("fcharset").unwrap_or(&None).clone();
         let mut dests = self.destinations.borrow_mut();
         let tbl = dests.get_mut("fonttbl").expect("font table not exist");
-        //println!("set charset:{:?}", charset);
         if let Destination::Text(text) = tbl {
             let charset = charset.map(|c| Charset::from(c as usize));
             if Some(Charset::ShiftJIS) == charset {
@@ -138,7 +127,6 @@ impl DocumentState {
             let font_name = text.to_string().replace(";", "");
 
             text.clear();
-            //println!("font {:?}", font_name);
             let font = Font {
                 number,
                 font_name,
@@ -147,7 +135,6 @@ impl DocumentState {
                 alt_font_name: None,
                 pitch: None,
             };
-            // println!("{:?}", font);
             self.fonts.insert(number, font);
         }
     }
@@ -160,7 +147,6 @@ impl DocumentState {
             let style_name = text.to_string().replace(";", "");
 
             text.clear();
-            //println!("font {:?}", font_name);
             let stylesheet = StyleSheet {
                 number,
                 name: style_name,
@@ -238,18 +224,4 @@ impl DocumentState {
             }
         }
     }
-    /*
-    pub fn get_font_table(&mut self) -> String {
-        let dests = self.destinations.borrow();
-        let keys = dests.keys();
-        let strs: Vec<String> = keys.into_iter().map(|k| k.to_owned()).collect();
-        println!("keys {}", strs.join(", "));
-        let tbl = dests.get("fonttbl").expect("font table not exist");
-
-        if let Destination::Text(text) = tbl {
-            text.to_string()
-        } else {
-            "".to_owned()
-        }
-    } */
 }

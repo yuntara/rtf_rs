@@ -138,7 +138,7 @@ impl GroupState {
     pub fn get_cur_style(&self) -> Option<FontStyle> {
         let bold = self.has_key("b");
         let italic = self.has_key("i");
-        let underline = self.has_key("u");
+        let underline = self.has_key("ul");
         let size = self.values.get("fs").unwrap_or(&None).clone();
         let cb: usize = self
             .values
@@ -152,8 +152,8 @@ impl GroupState {
             .unwrap_or(&Some(0))
             .unwrap_or(0)
             .clone() as usize;
-        //self.destinations.get_mut("stylesheet");
-        if !bold && !italic && !underline && size.is_none() {
+
+        if !bold && !italic && !underline && size.is_none() && cf == 0 && cb == 0 {
             return None;
         }
         Some(FontStyle {
@@ -180,7 +180,7 @@ impl GroupState {
         self.values.remove("ri");
         self.values.remove("intbl");
         self.values.remove("b");
-        self.values.remove("u");
+        self.values.remove("ul");
         self.values.remove("i");
         self.values.remove("fs");
     }
@@ -275,11 +275,23 @@ impl GroupState {
                 self.next_color_index();
             }
         } else if let Some(dest) = (*self.destinations).borrow_mut().get_mut(&dest_name) {
+            let b = if bytes.len() > self.ignore_count {
+                let ic = self.ignore_count;
+                if ic > 0 {
+                    self.ignore_count = 0;
+                }
+                &bytes[ic..]
+            } else if bytes.len() == 0 {
+                bytes
+            } else {
+                self.ignore_count = self.ignore_count - bytes.len();
+                &[]
+            };
             match dest {
                 Destination::Text(_) => {
                     if let Some(decoder) = self.dest_encoding {
                         dest.append_text(
-                            &bytes[self.ignore_count..],
+                            b,
                             self.cur_font,
                             self.get_cur_style(),
                             self.get_cur_para_style(),
@@ -295,11 +307,8 @@ impl GroupState {
                     }
                 }
                 Destination::Bytes(_) => {
-                    dest.append_bytes(&bytes[self.ignore_count..]);
+                    dest.append_bytes(b);
                 }
-            }
-            if self.ignore_count > 0 {
-                self.ignore_count = self.ignore_count - 1;
             }
         } else {
             panic!(
@@ -319,6 +328,7 @@ impl GroupState {
         old
     }
     pub fn add_cell(&mut self) {
+        self.flush();
         let dest_name = match self.get_destination_name() {
             Some(name) => name.clone(),
             None => {
@@ -395,7 +405,7 @@ impl GroupState {
             text.set_border_width(self.border_select.clone(), border_width);
         }
     }
-    pub fn set_cell_right(&mut self, right: usize) {
+    pub fn set_cell_right(&mut self, right: Twips) {
         let dest_name = match self.get_destination_name() {
             Some(name) => name.clone(),
             None => {
@@ -420,6 +430,7 @@ impl GroupState {
                 self.values.insert("intbl".to_owned(), None);
                 self.set_row();
             }
+            "intbl" => {}
             "trbrdrt" => self.border_select = BorderSelect::RowTop,
             "trbrdrl" => self.border_select = BorderSelect::RowLeft,
             "trbrdrb" => self.border_select = BorderSelect::RowBottom,
@@ -441,15 +452,18 @@ impl GroupState {
             "brdrw" => self.set_border_width(value.unwrap_or(0) as usize),
             "cellx" => {
                 if let Some(value) = value {
-                    self.set_cell_right(value as usize)
+                    self.set_cell_right((value as usize).into())
                 }
             }
             "uc" => {
-                self.new_line();
-                self.unicode_count = value.unwrap_or(0) as usize;
+                self.ignore_count = value.unwrap_or(0) as usize;
             }
             "u" => {
-                if self.unicode_count > 0 {
+                if let Some(value) = value {
+                    self.write_unicode(value)
+                }
+
+                /*if self.unicode_count > 0 {
                     if let Some(value) = value {
                         self.write_unicode(value)
                     }
@@ -458,7 +472,7 @@ impl GroupState {
                     if self.unicode_count == 0 {
                         self.new_line();
                     }
-                }
+                }*/
             }
             "red" => {
                 let len = self.colors.len();
@@ -493,11 +507,11 @@ impl GroupState {
                     }
                 }
             }
-            "u" => {
+            "ul" => {
                 if let Some(n) = value {
                     if n == 0 {
                         self.new_line();
-                        self.values.remove("u");
+                        self.values.remove("ul");
 
                         return;
                     }

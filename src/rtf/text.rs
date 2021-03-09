@@ -107,7 +107,6 @@ impl Text {
             .last_mut()
             .expect("must exist paragraph");
         if lp.table.is_some() && follow_table {
-            //println!("last para is table");
             let table = lp.table.as_mut().unwrap();
             table.last_cell().paras.last_mut().expect("must exist para")
         } else {
@@ -155,13 +154,27 @@ impl Text {
         self.pages = vec![Page::new()];
     }
 
-    pub fn last_or_new_line(&mut self, font: Option<i32>, style: Option<FontStyle>) -> &mut Line {
-        let (used, line_font, line_style) = {
+    pub fn last_or_new_line(
+        &mut self,
+        font: Option<i32>,
+        style: Option<FontStyle>,
+        encoding: Option<&'static encoding_rs::Encoding>,
+    ) -> &mut Line {
+        let (used, line_font, line_style, line_encoding) = {
             let line = self.last_line();
 
-            (line.bytes.len() > 0, line.font, line.style.clone())
+            (
+                line.bytes.len() > 0,
+                line.font,
+                line.style.clone(),
+                line.encoding,
+            )
         };
-        if used && (line_font != font || line_style != style) {
+        if used
+            && (line_font != font
+                || line_style != style
+                || (line_encoding.is_some() && line_encoding != encoding))
+        {
             self.new_line();
             let new_line = self.last_line();
             new_line.font = font;
@@ -175,6 +188,7 @@ impl Text {
             if line.style.is_none() {
                 line.style = style
             }
+
             line
         }
     }
@@ -236,11 +250,7 @@ impl Text {
                     self.remove_unused();
                 }
             }
-            /*{
-                println!("{:?}", Text::decode_line(self.encoding, self.last_line()));
-            }*/
 
-            //self.last_section().paras.push(Paragraph::new());
             self.new_paragraph(in_table);
             let new_para = self.last_paragraph(in_table);
             new_para.stylesheet = stylesheet;
@@ -410,7 +420,7 @@ impl Text {
             border.width = border_width;
         }
     }
-    pub fn set_cell_right(&mut self, right: usize) {
+    pub fn set_cell_right(&mut self, right: Twips) {
         let table = &mut self.last_paragraph(false).table;
         if let Some(table) = table {
             let mut last_row = table.last_row();
