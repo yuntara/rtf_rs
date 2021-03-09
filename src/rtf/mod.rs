@@ -1,5 +1,6 @@
 extern crate encoding_rs;
 
+mod color;
 mod destination;
 mod document;
 mod font;
@@ -19,6 +20,7 @@ use rtf_grimoire::tokenizer::Token;
 use std::collections::HashMap;
 
 pub use crate::errors::*;
+use color::*;
 use destination::*;
 use document::*;
 use font::*;
@@ -45,7 +47,15 @@ impl Rtf {
             tokens: Rtf::tokenize(data)?,
         })
     }
-    pub fn get_text(self) -> (Option<Text>, HashMap<i32, Font>, HashMap<i32, StyleSheet>) {
+    pub fn get_text(
+        self,
+    ) -> (
+        Option<Text>,
+        HashMap<i32, Font>,
+        HashMap<i32, StyleSheet>,
+        Vec<Color>,
+        Option<i32>,
+    ) {
         let mut state = DocumentState::new();
 
         for token in self.tokens.iter().filter(|c| c != &&Token::Newline) {
@@ -54,16 +64,35 @@ impl Rtf {
         let font_table = state.fonts;
         let stylesheets = state.stylesheets;
         let dest = (*state.destinations).borrow();
-
+        let color_table = state.colors;
+        let default_font_number = state.default_font_number;
         if let Some(dest) = dest.get("rtf") {
             debug!("Writing rtf1 content...");
             if let Destination::Text(text) = dest {
-                (Some(text.clone()), font_table, stylesheets)
+                (
+                    Some(text.clone()),
+                    font_table,
+                    stylesheets,
+                    color_table,
+                    default_font_number,
+                )
             } else {
-                (None, font_table, stylesheets)
+                (
+                    None,
+                    font_table,
+                    stylesheets,
+                    color_table,
+                    default_font_number,
+                )
             }
         } else {
-            (None, font_table, stylesheets)
+            (
+                None,
+                font_table,
+                stylesheets,
+                color_table,
+                default_font_number,
+            )
         }
     }
     pub fn into_text(self) -> String {
@@ -195,18 +224,37 @@ impl Rtf {
             font_table: &HashMap<i32, font::Font>,
             encoding: Option<&'static encoding_rs::Encoding>,
             stylesheet_font_style: &FontStyle,
+            color_table: &[color::Color],
+            default_font: Option<i32>,
         ) -> Run {
             let mut run = Run::new();
-            let text = crate::rtf::Text::decode_line(encoding, &line);
             /* println!("{:?}", line.bytes);
             println!("{}", text);
             println!("{:?}", encoding);*/
-            run = run.add_text(text);
-            if let Some(font) = line.font {
+
+            if let Some(font) = line.font.or(default_font) {
                 if let Some(font) = font_table.get(&font) {
+                    match font.charset {
+                        Some(Charset::ShiftJIS) => {
+                            let text =
+                                crate::rtf::Text::decode_line(Some(encoding_rs::SHIFT_JIS), &line);
+                            run = run.add_text(text);
+                        }
+                        _ => {
+                            let text = crate::rtf::Text::decode_line(encoding, &line);
+                            run = run.add_text(text);
+                        }
+                    }
                     let run_font = RunFonts::new().east_asia(font.font_name.clone());
                     run = run.fonts(run_font);
+                } else {
+                    let text = crate::rtf::Text::decode_line(encoding, &line);
+
+                    run = run.add_text(text);
                 }
+            } else {
+                let text = crate::rtf::Text::decode_line(encoding, &line);
+                run = run.add_text(text);
             }
             if let Some(style) = line.style.as_ref() {
                 if style.bold || stylesheet_font_style.bold {
@@ -223,6 +271,16 @@ impl Rtf {
                 } else if let Some(size) = stylesheet_font_style.size {
                     run = run.size(size as usize);
                 }
+                if style.foreground_color > 0 {
+                    if let Some(color) = color_table.get(style.foreground_color - 1) {
+                        run = run.color(color)
+                    }
+                }
+                if style.background_color > 0 {
+                    if let Some(color) = color_table.get(style.background_color - 1) {
+                        run = run.highlight(color)
+                    }
+                }
             }
 
             run
@@ -232,7 +290,7 @@ impl Rtf {
         let mut docx = docx_rs::Docx::new();
         let mut cursor = Cursor::new(Vec::new());
 
-        let (text, font_table, stylesheets) = self.get_text();
+        let (text, font_table, stylesheets, color_table, default_font_number) = self.get_text();
         let default_stylesheet = StyleSheet::default();
         let default_font = FontStyle::new();
         let default_para_style = style::ParagraphStyle::default();
@@ -314,6 +372,8 @@ impl Rtf {
                                                 &font_table,
                                                 line.encoding.or(text.encoding),
                                                 &stylesheet_font_style,
+                                                &color_table,
+                                                default_font_number,
                                             );
                                             p = p.add_run(run);
                                         }
@@ -324,6 +384,7 @@ impl Rtf {
                                     } else {
                                         left = None;
                                     }
+                                    // println!("{:?}", cell);
                                     cells.push(cell);
                                 }
                                 let row = docx_rs::TableRow::new(cells);
@@ -352,6 +413,8 @@ impl Rtf {
                                     &font_table,
                                     line.encoding.or(text.encoding),
                                     &stylesheet_font_style,
+                                    &color_table,
+                                    default_font_number,
                                 );
                                 p = p.add_run(run);
                             }

@@ -6,7 +6,9 @@ pub struct DocumentState {
     pub group_stack: Vec<GroupState>,
     pub buffer: Vec<u8>,
     pub fonts: HashMap<i32, Font>,
+    pub colors: Vec<Color>,
     pub stylesheets: HashMap<i32, StyleSheet>,
+    pub default_font_number: Option<i32>,
 }
 impl DocumentState {
     pub fn new() -> Self {
@@ -15,7 +17,9 @@ impl DocumentState {
             group_stack: Vec::new(),
             buffer: vec![],
             fonts: HashMap::new(),
+            colors: vec![],
             stylesheets: HashMap::new(),
+            default_font_number: None,
         }
     }
 
@@ -33,7 +37,10 @@ impl DocumentState {
             } else if word_is_optional {
                 warn!("Skipping optional unsupported control word \\{}", symbol);
             } else {
-                warn!("Unsupported/illegal control symbol \\{} (writing to document anyway)", symbol);
+                warn!(
+                    "Unsupported/illegal control symbol \\{} (writing to document anyway)",
+                    symbol
+                );
                 self.write_to_current_destination(format!("{}", symbol).as_bytes());
             }
         } else {
@@ -90,19 +97,46 @@ impl DocumentState {
             self.group_stack.push(last_group.clone());
         } else {
             debug!("Creating initial group...");
-            self.group_stack.push(GroupState::new(self.destinations.clone()));
+            self.group_stack
+                .push(GroupState::new(self.destinations.clone()));
         }
+    }
+    pub fn process_colortable(&mut self, group: &mut GroupState) {
+        let mut dests = self.destinations.borrow_mut();
+        let tbl = dests.get_mut("colortbl").expect("color table not exist");
+
+        if let Destination::Text(text) = tbl {
+            //println!("colortable dest : {:?}", text);
+        } else {
+            //println!("colortable dest : {:?}", tbl);
+        }
+        loop {
+            if let Some(color) = group.shift_color() {
+                //println!("{:?}", color);
+                self.colors.push(color);
+            } else {
+                break;
+            }
+        }
+    }
+
+    pub fn process_rtf(&mut self, group: &GroupState) {
+        let number = group.values.get("deff").unwrap_or(&None);
+        self.default_font_number = number.clone();
     }
     pub fn process_font(&mut self, group: &GroupState) {
         let number = group.values.get("f").unwrap_or(&Some(1)).unwrap_or(1);
-        let charset = group.values.get("charset").unwrap_or(&None).clone();
+        let charset = group.values.get("fcharset").unwrap_or(&None).clone();
         let mut dests = self.destinations.borrow_mut();
         let tbl = dests.get_mut("fonttbl").expect("font table not exist");
-
+        //println!("set charset:{:?}", charset);
         if let Destination::Text(text) = tbl {
-            let mut font_name = text.to_string();
-            // remove `;`
-            font_name.pop();
+            let charset = charset.map(|c| Charset::from(c as usize));
+            if Some(Charset::ShiftJIS) == charset {
+                text.encoding = Some(encoding_rs::SHIFT_JIS);
+            }
+            let font_name = text.to_string().replace(";", "");
+
             text.clear();
             //println!("font {:?}", font_name);
             let font = Font {
@@ -113,7 +147,7 @@ impl DocumentState {
                 alt_font_name: None,
                 pitch: None,
             };
-
+            // println!("{:?}", font);
             self.fonts.insert(number, font);
         }
     }
@@ -123,9 +157,8 @@ impl DocumentState {
         let tbl = dests.get_mut("fonttbl").expect("font table not exist");
 
         if let Destination::Text(text) = tbl {
-            let mut style_name = text.to_string();
-            // remove `;`
-            style_name.pop();
+            let style_name = text.to_string().replace(";", "");
+
             text.clear();
             //println!("font {:?}", font_name);
             let stylesheet = StyleSheet {
@@ -138,13 +171,14 @@ impl DocumentState {
             self.stylesheets.insert(number, stylesheet);
         }
     }
-    pub fn process_group(&mut self, group: &GroupState) {
+    pub fn process_group(&mut self, group: &mut GroupState) {
         let dest_name = group.get_destination_name();
         if let Some(dest_name) = dest_name {
             match dest_name.as_str() {
                 "fonttbl" => self.process_font(group),
                 "stylesheet" => self.process_stylesheet(group),
-
+                "colortbl" => self.process_colortable(group),
+                "rtf" => self.process_rtf(group),
                 _ => {}
             };
         }
@@ -152,7 +186,7 @@ impl DocumentState {
     pub fn end_group(&mut self) {
         if let Some(mut group) = self.group_stack.pop() {
             group.flush();
-            self.process_group(&group);
+            self.process_group(&mut group);
         // TODO: destination-folding support (tables, etc)
         } else {
             warn!("Document format error: End group count exceeds number start groups");
@@ -192,12 +226,15 @@ impl DocumentState {
             self.flush_buffer();
             match token {
                 Token::ControlSymbol(c) => self.do_control_symbol(*c, word_is_optional),
-                Token::ControlWord { name, arg } => self.do_control_word(name, *arg, word_is_optional),
+                Token::ControlWord { name, arg } => {
+                    self.do_control_word(name, *arg, word_is_optional)
+                }
                 Token::ControlBin(data) => self.do_control_bin(data, word_is_optional),
 
                 Token::StartGroup => self.start_group(),
                 Token::EndGroup => self.end_group(),
-                _ => (),
+                Token::Text(_t) => {}
+                Token::Newline => {}
             }
         }
     }

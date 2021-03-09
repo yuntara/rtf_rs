@@ -43,7 +43,7 @@ impl Destination {
     pub fn append_text(
         &mut self,
         new_bytes: &[u8],
-        font: i32,
+        font: Option<i32>,
         style: Option<FontStyle>,
         para_style: Option<ParagraphStyle>,
         stylesheet: Option<i32>,

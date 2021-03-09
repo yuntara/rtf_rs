@@ -17,7 +17,7 @@ pub struct Font {
     pub family: FontFamily,
     pub font_name: String,
     pub alt_font_name: Option<String>,
-    pub charset: Option<i32>,
+    pub charset: Option<Charset>,
     pub pitch: Option<i32>,
 }
 impl Font {
@@ -38,6 +38,8 @@ pub struct FontStyle {
     pub strike: bool,
     pub italic: bool,
     pub underline: bool,
+    pub foreground_color: usize,
+    pub background_color: usize,
     pub size: Option<i32>,
 }
 impl FontStyle {
@@ -47,7 +49,24 @@ impl FontStyle {
             strike: false,
             italic: false,
             underline: false,
+            foreground_color: 0,
+            background_color: 0,
             size: None,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Charset {
+    Ansi = 0,
+    ShiftJIS = 128,
+}
+impl From<usize> for Charset {
+    fn from(num: usize) -> Charset {
+        match num {
+            0 => Charset::Ansi,
+            128 => Charset::ShiftJIS,
+            _ => Charset::Ansi,
         }
     }
 }

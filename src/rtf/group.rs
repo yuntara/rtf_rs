@@ -6,11 +6,13 @@ pub struct GroupState {
     pub dest_encoding: Option<&'static encoding_rs::Encoding>,
     pub values: HashMap<String, Option<i32>>,
     pub opt_ignore_next_control: bool,
-    pub cur_font: i32,
+    pub cur_font: Option<i32>,
     pub buffer: Vec<u8>,
     pub border_select: BorderSelect,
     pub unicode_count: usize,
     pub ignore_count: usize,
+    pub color_index: usize,
+    pub colors: std::collections::VecDeque<Color>,
 }
 impl GroupState {
     pub fn new(destinations: Rc<RefCell<HashMap<String, Destination>>>) -> Self {
@@ -20,11 +22,13 @@ impl GroupState {
             dest_encoding: None,
             values: HashMap::new(),
             opt_ignore_next_control: false,
-            cur_font: 1,
+            cur_font: None,
             buffer: vec![],
             border_select: BorderSelect::Paragraph,
             unicode_count: 0,
             ignore_count: 0,
+            color_index: 0,
+            colors: std::collections::VecDeque::new(),
         }
     }
 
@@ -53,7 +57,11 @@ impl GroupState {
                 assert!(uses_encoding);
             }
             Some(Destination::Bytes(bytes)) => {
-                debug!("Switching to destination {}, with current length {})", name, bytes.len());
+                debug!(
+                    "Switching to destination {}, with current length {})",
+                    name,
+                    bytes.len()
+                );
                 assert!(!uses_encoding);
             }
             None => {
@@ -132,6 +140,18 @@ impl GroupState {
         let italic = self.has_key("i");
         let underline = self.has_key("u");
         let size = self.values.get("fs").unwrap_or(&None).clone();
+        let cb: usize = self
+            .values
+            .get("cb")
+            .unwrap_or(&Some(0))
+            .unwrap_or(0)
+            .clone() as usize;
+        let cf: usize = self
+            .values
+            .get("cf")
+            .unwrap_or(&Some(0))
+            .unwrap_or(0)
+            .clone() as usize;
         //self.destinations.get_mut("stylesheet");
         if !bold && !italic && !underline && size.is_none() {
             return None;
@@ -142,6 +162,8 @@ impl GroupState {
             strike: false,
             underline,
             size,
+            foreground_color: cf,
+            background_color: cb,
         })
     }
     pub fn get_cur_stylesheet(&self) -> Option<i32> {
@@ -157,6 +179,10 @@ impl GroupState {
         self.values.remove("li");
         self.values.remove("ri");
         self.values.remove("intbl");
+        self.values.remove("b");
+        self.values.remove("u");
+        self.values.remove("i");
+        self.values.remove("fs");
     }
     pub fn get_cur_para_style(&self) -> Option<ParagraphStyle> {
         let align = if self.has_key("ql") {
@@ -173,7 +199,11 @@ impl GroupState {
         let first_indent = self.values.get("fi").unwrap_or(&None).clone();
         let left_indent = self.values.get("li").unwrap_or(&None).clone();
         let right_indent = self.values.get("ri").unwrap_or(&None).clone();
-        if align.is_none() && first_indent.is_none() && left_indent.is_none() && right_indent.is_none() {
+        if align.is_none()
+            && first_indent.is_none()
+            && left_indent.is_none()
+            && right_indent.is_none()
+        {
             return None;
         }
         //self.destinations.get_mut("stylesheet");
@@ -183,6 +213,12 @@ impl GroupState {
             left_indent,
             right_indent,
         })
+    }
+    pub fn next_color_index(&mut self) {
+        self.colors.push_back(Color::default());
+    }
+    pub fn shift_color(&mut self) -> Option<Color> {
+        self.colors.pop_front()
     }
     pub fn flush(&mut self) {
         if self.buffer.len() > 0 {
@@ -234,7 +270,11 @@ impl GroupState {
                 return;
             }
         };
-        if let Some(dest) = (*self.destinations).borrow_mut().get_mut(&dest_name) {
+        if dest_name == "colortbl" {
+            if bytes.len() == 1 && bytes.get(0) == Some(&59 /* = ';' */) {
+                self.next_color_index();
+            }
+        } else if let Some(dest) = (*self.destinations).borrow_mut().get_mut(&dest_name) {
             match dest {
                 Destination::Text(_) => {
                     if let Some(decoder) = self.dest_encoding {
@@ -248,7 +288,10 @@ impl GroupState {
                             decoder,
                         );
                     } else {
-                        warn!("Writing to a text destination ({}) with no encoding set!", dest_name);
+                        warn!(
+                            "Writing to a text destination ({}) with no encoding set!",
+                            dest_name
+                        );
                     }
                 }
                 Destination::Bytes(_) => {
@@ -283,7 +326,8 @@ impl GroupState {
                 return;
             }
         };
-        if let Some(Destination::Text(text)) = (*self.destinations).borrow_mut().get_mut(&dest_name) {
+        if let Some(Destination::Text(text)) = (*self.destinations).borrow_mut().get_mut(&dest_name)
+        {
             let last_paragraph = text.last_paragraph(false);
 
             if let Some(table) = last_paragraph.table.as_mut() {
@@ -303,11 +347,13 @@ impl GroupState {
             }
         };
 
-        if let Some(Destination::Text(text)) = (*self.destinations).borrow_mut().get_mut(&dest_name) {
+        if let Some(Destination::Text(text)) = (*self.destinations).borrow_mut().get_mut(&dest_name)
+        {
             let last_paragraph = text.last_paragraph(false);
             if {
                 // let last_paragraph = text.last_paragraph();
-                last_paragraph.table.is_none() && (last_paragraph.lines.len() > 1 || last_paragraph.lines[0].bytes.len() > 0)
+                last_paragraph.table.is_none()
+                    && (last_paragraph.lines.len() > 1 || last_paragraph.lines[0].bytes.len() > 0)
             } {
                 let mut p = Paragraph::new();
                 p.table = Some(Table::new());
@@ -331,7 +377,8 @@ impl GroupState {
                 return;
             }
         };
-        if let Some(Destination::Text(text)) = (*self.destinations).borrow_mut().get_mut(&dest_name) {
+        if let Some(Destination::Text(text)) = (*self.destinations).borrow_mut().get_mut(&dest_name)
+        {
             text.set_border_type(self.border_select.clone(), border_type);
         }
     }
@@ -343,7 +390,8 @@ impl GroupState {
                 return;
             }
         };
-        if let Some(Destination::Text(text)) = (*self.destinations).borrow_mut().get_mut(&dest_name) {
+        if let Some(Destination::Text(text)) = (*self.destinations).borrow_mut().get_mut(&dest_name)
+        {
             text.set_border_width(self.border_select.clone(), border_width);
         }
     }
@@ -355,14 +403,15 @@ impl GroupState {
                 return;
             }
         };
-        if let Some(Destination::Text(text)) = (*self.destinations).borrow_mut().get_mut(&dest_name) {
+        if let Some(Destination::Text(text)) = (*self.destinations).borrow_mut().get_mut(&dest_name)
+        {
             text.set_cell_right(right);
         }
     }
     pub fn set_value(&mut self, name: &str, value: Option<i32>) {
         match name {
             "f" => {
-                self.cur_font = value.unwrap_or(1);
+                self.cur_font = Some(value.unwrap_or(1));
             }
             "pard" => {
                 self.reset_paragraph_properies();
@@ -411,6 +460,60 @@ impl GroupState {
                     }
                 }
             }
+            "red" => {
+                let len = self.colors.len();
+                if let Some(color) = self.colors.get_mut(len - 1) {
+                    if let Some(value) = value {
+                        color.r = value as u8;
+                    }
+                }
+            }
+            "green" => {
+                let len = self.colors.len();
+                if let Some(color) = self.colors.get_mut(len - 1) {
+                    if let Some(value) = value {
+                        color.g = value as u8;
+                    }
+                }
+            }
+            "blue" => {
+                let len = self.colors.len();
+                if let Some(color) = self.colors.get_mut(len - 1) {
+                    if let Some(value) = value {
+                        color.b = value as u8;
+                    }
+                }
+            }
+            "b" => {
+                if let Some(n) = value {
+                    if n == 0 {
+                        self.new_line();
+                        self.values.remove("b");
+                        return;
+                    }
+                }
+            }
+            "u" => {
+                if let Some(n) = value {
+                    if n == 0 {
+                        self.new_line();
+                        self.values.remove("u");
+
+                        return;
+                    }
+                }
+            }
+            "i" => {
+                if let Some(n) = value {
+                    if n == 0 {
+                        self.new_line();
+                        self.values.remove("i");
+
+                        return;
+                    }
+                }
+            }
+
             _ => {}
         };
         self.values.insert(name.to_string(), value);

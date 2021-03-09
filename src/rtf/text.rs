@@ -95,10 +95,17 @@ impl Text {
         self.pages.last_mut().expect("must exist page")
     }
     pub fn last_section(&mut self) -> &mut Section {
-        self.last_page().sections.last_mut().expect("must exist section")
+        self.last_page()
+            .sections
+            .last_mut()
+            .expect("must exist section")
     }
     pub fn last_paragraph(&mut self, follow_table: bool) -> &mut Paragraph {
-        let lp = self.last_section().paras.last_mut().expect("must exist paragraph");
+        let lp = self
+            .last_section()
+            .paras
+            .last_mut()
+            .expect("must exist paragraph");
         if lp.table.is_some() && follow_table {
             //println!("last para is table");
             let table = lp.table.as_mut().unwrap();
@@ -148,22 +155,22 @@ impl Text {
         self.pages = vec![Page::new()];
     }
 
-    pub fn last_or_new_line(&mut self, font: i32, style: Option<FontStyle>) -> &mut Line {
+    pub fn last_or_new_line(&mut self, font: Option<i32>, style: Option<FontStyle>) -> &mut Line {
         let (used, line_font, line_style) = {
             let line = self.last_line();
 
             (line.bytes.len() > 0, line.font, line.style.clone())
         };
-        if used && (line_font != Some(font) || line_style != style) {
+        if used && (line_font != font || line_style != style) {
             self.new_line();
             let new_line = self.last_line();
-            new_line.font = Some(font);
+            new_line.font = font;
             new_line.style = style;
             new_line
         } else {
             let line = self.last_line();
             if line.font.is_none() {
-                line.font = Some(font)
+                line.font = font
             }
             if line.style.is_none() {
                 line.style = style
@@ -175,7 +182,8 @@ impl Text {
         if self.last_line().bytes.len() == 0 {
             self.last_paragraph(false).lines.pop();
         }
-        if self.last_paragraph(false).lines.len() == 0 && self.last_paragraph(false).table.is_none() {
+        if self.last_paragraph(false).lines.len() == 0 && self.last_paragraph(false).table.is_none()
+        {
             self.last_section().paras.pop();
         }
         if self.last_section().paras.len() == 0 {
