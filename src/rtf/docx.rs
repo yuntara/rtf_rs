@@ -329,7 +329,6 @@ impl Docx for Rtf {
                                 table = table.set_borders(border.into());
                             }
                             if grid.len() > 0 {
-                                println!("grid: {:?}", grid);
                                 table = table.set_grid(grid);
                             }
                             docx = docx.add_table(table);
