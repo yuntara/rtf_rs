@@ -126,14 +126,14 @@ impl Docx for Rtf {
             let text = if let Some(font) = line.font.or(default_font) {
                 if let Some(font) = font_table.get(&font) {
                     let text = match font.charset {
-                        Some(Charset::ShiftJIS) => {
+                        Some(Charset::ShiftJIS) if encoding != Some(encoding_rs::UTF_16LE) => {
                             crate::rtf::Text::decode_line(Some(encoding_rs::SHIFT_JIS), &line)
                         }
                         _ => crate::rtf::Text::decode_line(encoding, &line),
                     };
                     let run_font = RunFonts::new().east_asia(font.font_name.clone());
                     run = run.fonts(run_font);
-                    //println!("{} {:?}", text, encoding);
+                    // println!("{} {:?} {:?}", text, encoding, font.charset);
                     text
                 } else {
                     crate::rtf::Text::decode_line(encoding, &line)
@@ -329,7 +329,6 @@ impl Docx for Rtf {
                                 table = table.set_borders(border.into());
                             }
                             if grid.len() > 0 {
-                                println!("grid: {:?}", grid);
                                 table = table.set_grid(grid);
                             }
                             docx = docx.add_table(table);
