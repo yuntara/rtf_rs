@@ -232,6 +232,7 @@ impl GroupState {
         self.buffer.extend(bytes);
     }
     pub fn write_unicode(&mut self, value: i32) {
+        self.flush();
         let dest_name = match self.get_destination_name() {
             Some(name) => name.clone(),
             None => {
@@ -282,11 +283,12 @@ impl GroupState {
                 }
                 &bytes[ic..]
             } else if bytes.len() == 0 {
-                bytes
+                &[]
             } else {
                 self.ignore_count = self.ignore_count - bytes.len();
                 &[]
             };
+
             match dest {
                 Destination::Text(_) => {
                     if let Some(decoder) = self.dest_encoding {
@@ -456,6 +458,7 @@ impl GroupState {
                 }
             }
             "uc" => {
+                self.flush();
                 self.ignore_count = value.unwrap_or(0) as usize;
             }
             "u" => {
