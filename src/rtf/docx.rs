@@ -218,7 +218,9 @@ impl Docx for Rtf {
                         if let Some(table) = para.table {
                             let mut rows: Vec<docx_rs::TableRow> = vec![];
                             let mut border = None;
-                            //println!("{:?}", table);
+                            let mut grid: Vec<usize> = vec![];
+                            let mut make_grid = true;
+
                             for rtf_row in table.rows {
                                 if rtf_row.border.is_some() {
                                     border = rtf_row.border.clone();
@@ -310,19 +312,28 @@ impl Docx for Rtf {
                                     }
                                     if let Some(width) = width {
                                         cell = cell.width(width, WidthType::Auto);
+                                        if make_grid {
+                                            grid.push(width);
+                                        }
                                     } else {
                                         left = None;
+                                        grid = vec![];
+                                        make_grid = false;
                                     }
                                     // println!("{:?}", cell);
                                     cells.push(cell);
                                 }
                                 let row = docx_rs::TableRow::new(cells);
-                                rows.push(row)
+                                rows.push(row);
+                                make_grid = false;
                             }
 
                             let mut table = docx_rs::Table::new(rows);
                             if let Some(border) = border {
                                 table = table.set_borders(border.into());
+                            }
+                            if grid.len() > 0 {
+                                table = table.set_grid(grid);
                             }
                             docx = docx.add_table(table);
                         } else {
