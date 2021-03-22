@@ -100,8 +100,16 @@ impl From<usize> for Twips {
         Self { 0: n }
     }
 }
+impl Into<usize> for Twips {
+    fn into(self) -> usize {
+        self.0
+    }
+}
 impl Twips {
     pub fn into_px(self) -> usize {
         self.0 / 15
+    }
+    pub fn from_px(px: usize) -> Self {
+        Self { 0: px * 15 }
     }
 }

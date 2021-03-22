@@ -170,12 +170,19 @@ impl DocumentState {
         }
     }
     pub fn end_group(&mut self) {
-        if let Some(mut group) = self.group_stack.pop() {
+        let ignore_count = if let Some(mut group) = self.group_stack.pop() {
             group.flush();
+
             self.process_group(&mut group);
+            group.ignore_count
         // TODO: destination-folding support (tables, etc)
         } else {
             warn!("Document format error: End group count exceeds number start groups");
+            0
+        };
+
+        if let Some(last) = self.group_stack.last_mut() {
+            last.ignore_count = ignore_count;
         }
     }
 

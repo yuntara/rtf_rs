@@ -122,9 +122,6 @@ impl Docx for Rtf {
             default_font: Option<i32>,
         ) -> std::collections::VecDeque<Run> {
             let mut run = Run::new();
-            /* println!("{:?}", line.bytes);
-            println!("{}", text);
-            println!("{:?}", encoding);*/
 
             let text = if let Some(font) = line.font.or(default_font) {
                 if let Some(font) = font_table.get(&font) {
@@ -136,7 +133,7 @@ impl Docx for Rtf {
                     };
                     let run_font = RunFonts::new().east_asia(font.font_name.clone());
                     run = run.fonts(run_font);
-
+                    //println!("{} {:?}", text, encoding);
                     text
                 } else {
                     crate::rtf::Text::decode_line(encoding, &line)
@@ -226,7 +223,6 @@ impl Docx for Rtf {
                                     border = rtf_row.border.clone();
                                 }
                                 let mut left = Some(0);
-                                //println!("{:?}", rtf_row);
                                 if rtf_row.is_empty() {
                                     continue;
                                 }
@@ -313,7 +309,7 @@ impl Docx for Rtf {
                                     if let Some(width) = width {
                                         cell = cell.width(width, WidthType::Auto);
                                         if make_grid {
-                                            grid.push(width);
+                                            grid.push(Twips::from_px(width).into());
                                         }
                                     } else {
                                         left = None;
@@ -333,6 +329,7 @@ impl Docx for Rtf {
                                 table = table.set_borders(border.into());
                             }
                             if grid.len() > 0 {
+                                println!("grid: {:?}", grid);
                                 table = table.set_grid(grid);
                             }
                             docx = docx.add_table(table);
