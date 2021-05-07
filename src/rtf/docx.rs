@@ -43,38 +43,38 @@ impl Docx for Rtf {
             fn into(self) -> TableBorders {
                 let mut borders = TableBorders::new();
                 if let Some(top) = self.top {
-                    let mut b = TableBorder::new(BorderPosition::Top);
+                    let mut b = TableBorder::new(docx_rs::TableBorderPosition::Top);
                     b.border_type = top.border_type.into();
                     b.size = top.width;
                     borders = borders.set(b);
                 }
                 if let Some(left) = self.left {
-                    let mut b = TableBorder::new(BorderPosition::Left);
+                    let mut b = TableBorder::new(docx_rs::TableBorderPosition::Left);
                     b.border_type = left.border_type.into();
                     b.size = left.width;
                     borders = borders.set(b);
                 }
                 if let Some(right) = self.right {
-                    let mut b = TableBorder::new(BorderPosition::Right);
+                    let mut b = TableBorder::new(docx_rs::TableBorderPosition::Right);
                     b.border_type = right.border_type.into();
                     b.size = right.width;
 
                     borders = borders.set(b);
                 }
                 if let Some(bottom) = self.bottom {
-                    let mut b = TableBorder::new(BorderPosition::Bottom);
+                    let mut b = TableBorder::new(docx_rs::TableBorderPosition::Bottom);
                     b.border_type = bottom.border_type.into();
                     b.size = bottom.width;
                     borders = borders.set(b);
                 }
                 if let Some(vertical) = self.vertical {
-                    let mut b = TableBorder::new(BorderPosition::InsideV);
+                    let mut b = TableBorder::new(docx_rs::TableBorderPosition::InsideV);
                     b.border_type = vertical.border_type.into();
                     b.size = vertical.width;
                     borders = borders.set(b);
                 }
                 if let Some(horizontal) = self.horizontal {
-                    let mut b = TableBorder::new(BorderPosition::InsideH);
+                    let mut b = TableBorder::new(docx_rs::TableBorderPosition::InsideH);
                     b.border_type = horizontal.border_type.into();
                     b.size = horizontal.width;
                     borders = borders.set(b);
@@ -86,26 +86,26 @@ impl Docx for Rtf {
             fn into(self) -> TableCellBorders {
                 let mut borders = TableCellBorders::new();
                 if let Some(top) = self.top {
-                    let mut b = TableCellBorder::new(BorderPosition::Top);
+                    let mut b = TableCellBorder::new(docx_rs::TableCellBorderPosition::Top);
                     b.border_type = top.border_type.into();
                     b.size = top.width;
                     borders = borders.set(b);
                 }
                 if let Some(left) = self.left {
-                    let mut b = TableCellBorder::new(BorderPosition::Left);
+                    let mut b = TableCellBorder::new(docx_rs::TableCellBorderPosition::Left);
                     b.border_type = left.border_type.into();
                     b.size = left.width;
                     borders = borders.set(b);
                 }
                 if let Some(right) = self.right {
-                    let mut b = TableCellBorder::new(BorderPosition::Right);
+                    let mut b = TableCellBorder::new(docx_rs::TableCellBorderPosition::Right);
                     b.border_type = right.border_type.into();
                     b.size = right.width;
 
                     borders = borders.set(b);
                 }
                 if let Some(bottom) = self.bottom {
-                    let mut b = TableCellBorder::new(BorderPosition::Bottom);
+                    let mut b = TableCellBorder::new(docx_rs::TableCellBorderPosition::Bottom);
                     b.border_type = bottom.border_type.into();
                     b.size = bottom.width;
                     borders = borders.set(b);
