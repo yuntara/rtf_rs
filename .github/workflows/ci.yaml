@@ -58,7 +58,7 @@ jobs:
       - name: Start sccache server
         run: sccache --start-server
       - name: test
-        run: docker network create lambda-local && cd d_one && make test
+        run: make test
       - name: Print sccache stats
         run: sccache --show-stats
       - name: Stop sccache server
