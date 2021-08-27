@@ -39,7 +39,7 @@ impl Destination {
             text.new_line()
         }
     }
-
+    #[allow(clippy::too_many_arguments)]
     pub fn append_text(
         &mut self,
         new_bytes: &[u8],
@@ -50,7 +50,7 @@ impl Destination {
         in_table: bool,
         encoding: &'static encoding_rs::Encoding,
     ) {
-        if new_bytes.len() == 0 {
+        if new_bytes.is_empty() {
             return;
         }
         if let Destination::Text(text) = self {

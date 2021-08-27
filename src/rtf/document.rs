@@ -101,12 +101,8 @@ impl DocumentState {
         }
     }
     pub fn process_colortable(&mut self, group: &mut GroupState) {
-        loop {
-            if let Some(color) = group.shift_color() {
-                self.colors.push(color);
-            } else {
-                break;
-            }
+        while let Some(color) = group.shift_color() {
+            self.colors.push(color);
         }
     }
 

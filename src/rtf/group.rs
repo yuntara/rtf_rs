@@ -282,10 +282,10 @@ impl GroupState {
                     self.ignore_count = 0;
                 }
                 &bytes[ic..]
-            } else if bytes.len() == 0 {
+            } else if bytes.is_empty() {
                 &[]
             } else {
-                self.ignore_count = self.ignore_count - bytes.len();
+                self.ignore_count -= bytes.len();
                 &[]
             };
 
@@ -362,11 +362,11 @@ impl GroupState {
         if let Some(Destination::Text(text)) = (*self.destinations).borrow_mut().get_mut(&dest_name)
         {
             let last_paragraph = text.last_paragraph(false);
-            if {
-                // let last_paragraph = text.last_paragraph();
-                last_paragraph.table.is_none()
-                    && (last_paragraph.lines.len() > 1 || last_paragraph.lines[0].bytes.len() > 0)
-            } {
+            if
+            // let last_paragraph = text.last_paragraph();
+            last_paragraph.table.is_none()
+                && (last_paragraph.lines.len() > 1 || !last_paragraph.lines[0].bytes.is_empty())
+            {
                 let mut p = Paragraph::new();
                 p.table = Some(Table::new());
 
@@ -465,6 +465,7 @@ impl GroupState {
                 if let Some(value) = value {
                     self.write_unicode(value)
                 }
+                self.ignore_count = self.values.get("uc").unwrap_or(&Some(0)).unwrap_or(0) as usize;
 
                 /*if self.unicode_count > 0 {
                     if let Some(value) = value {
