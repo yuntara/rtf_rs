@@ -246,7 +246,7 @@ impl Text {
             self.last_paragraph(in_table)
         } else if used && (para_style != style || para_stylesheet != stylesheet) {
             {
-                if self.last_line().bytes.len() == 0 {
+                if self.last_line().bytes.is_empty() {
                     self.remove_unused();
                 }
             }
@@ -318,7 +318,7 @@ impl Text {
             BorderSelect::RowTop => {
                 let rb = self.get_row_border();
                 if let Some(rb) = rb {
-                    rb.top = Some(rb.top.clone().unwrap_or_else(|| Border::new()));
+                    rb.top = Some(rb.top.clone().unwrap_or_else(Border::new));
                     rb.top.as_mut()
                 } else {
                     None
@@ -327,7 +327,7 @@ impl Text {
             BorderSelect::RowLeft => {
                 let rb = self.get_row_border();
                 if let Some(rb) = rb {
-                    rb.left = Some(rb.left.clone().unwrap_or_else(|| Border::new()));
+                    rb.left = Some(rb.left.clone().unwrap_or_else(Border::new));
                     rb.left.as_mut()
                 } else {
                     None
@@ -336,7 +336,7 @@ impl Text {
             BorderSelect::RowRight => {
                 let rb = self.get_row_border();
                 if let Some(rb) = rb {
-                    rb.right = Some(rb.right.clone().unwrap_or_else(|| Border::new()));
+                    rb.right = Some(rb.right.clone().unwrap_or_else(Border::new));
                     rb.right.as_mut()
                 } else {
                     None
@@ -345,7 +345,7 @@ impl Text {
             BorderSelect::RowBottom => {
                 let rb = self.get_row_border();
                 if let Some(rb) = rb {
-                    rb.bottom = Some(rb.bottom.clone().unwrap_or_else(|| Border::new()));
+                    rb.bottom = Some(rb.bottom.clone().unwrap_or_else(Border::new));
                     rb.bottom.as_mut()
                 } else {
                     None
@@ -354,7 +354,7 @@ impl Text {
             BorderSelect::RowVertical => {
                 let rb = self.get_row_border();
                 if let Some(rb) = rb {
-                    rb.vertical = Some(rb.vertical.clone().unwrap_or_else(|| Border::new()));
+                    rb.vertical = Some(rb.vertical.clone().unwrap_or_else(Border::new));
                     rb.vertical.as_mut()
                 } else {
                     None
@@ -363,7 +363,7 @@ impl Text {
             BorderSelect::RowHorizontal => {
                 let rb = self.get_row_border();
                 if let Some(rb) = rb {
-                    rb.horizontal = Some(rb.horizontal.clone().unwrap_or_else(|| Border::new()));
+                    rb.horizontal = Some(rb.horizontal.clone().unwrap_or_else(Border::new));
                     rb.horizontal.as_mut()
                 } else {
                     None
@@ -372,7 +372,7 @@ impl Text {
             BorderSelect::CellTop => {
                 let rb = self.get_cell_border();
                 if let Some(rb) = rb {
-                    rb.top = Some(rb.top.clone().unwrap_or_else(|| Border::new()));
+                    rb.top = Some(rb.top.clone().unwrap_or_else(Border::new));
                     rb.top.as_mut()
                 } else {
                     None
@@ -381,7 +381,7 @@ impl Text {
             BorderSelect::CellLeft => {
                 let rb = self.get_cell_border();
                 if let Some(rb) = rb {
-                    rb.left = Some(rb.left.clone().unwrap_or_else(|| Border::new()));
+                    rb.left = Some(rb.left.clone().unwrap_or_else(Border::new));
                     rb.left.as_mut()
                 } else {
                     None
@@ -390,7 +390,7 @@ impl Text {
             BorderSelect::CellRight => {
                 let rb = self.get_cell_border();
                 if let Some(rb) = rb {
-                    rb.right = Some(rb.right.clone().unwrap_or_else(|| Border::new()));
+                    rb.right = Some(rb.right.clone().unwrap_or_else(Border::new));
                     rb.right.as_mut()
                 } else {
                     None
@@ -399,7 +399,7 @@ impl Text {
             BorderSelect::CellBottom => {
                 let rb = self.get_cell_border();
                 if let Some(rb) = rb {
-                    rb.bottom = Some(rb.bottom.clone().unwrap_or_else(|| Border::new()));
+                    rb.bottom = Some(rb.bottom.clone().unwrap_or_else(Border::new));
                     rb.bottom.as_mut()
                 } else {
                     None
