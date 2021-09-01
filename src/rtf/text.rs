@@ -49,6 +49,7 @@ pub struct Line {
     pub font: Option<i32>,
     pub style: Option<FontStyle>,
     pub encoding: Option<&'static encoding_rs::Encoding>,
+    pub fit_text: Option<Twips>,
 }
 impl Line {
     pub fn new() -> Line {
@@ -57,6 +58,7 @@ impl Line {
             font: None,
             style: None,
             encoding: None,
+            fit_text: None,
         }
     }
 }
@@ -209,9 +211,28 @@ impl Text {
     }
     pub fn new_paragraph(&mut self, follow_table: bool) {
         if follow_table {
-            let last_para = self.last_paragraph(follow_table);
+            let parent = {
+                self.pages
+                    .last()
+                    .expect("must have page")
+                    .sections
+                    .last()
+                    .expect("must have section")
+                    .paras
+                    .last()
+                    .cloned()
+            };
+
+            let last_para = self.last_paragraph(false);
             if let Some(table) = last_para.table.as_mut() {
-                table.last_cell().paras.push(Paragraph::new());
+                let mut paragraph = Paragraph::new();
+
+                if let Some(parent) = parent {
+                    paragraph.style = parent.style.clone();
+                    paragraph.stylesheet = parent.stylesheet;
+                }
+                table.last_cell().paras.push(paragraph);
+                println!("added paragraph {:?}", table.last_cell().paras);
             }
         } else {
             self.last_section().paras.push(Paragraph::new());
@@ -228,7 +249,7 @@ impl Text {
             let para = self.last_paragraph(in_table);
 
             (
-                para.lines.len() > 1 || para.lines.last().unwrap().bytes.len() > 0,
+                para.lines.len() > 1 || !para.lines.last().unwrap().bytes.is_empty(),
                 para.style.clone(),
                 para.stylesheet,
                 had_table,
@@ -238,12 +259,14 @@ impl Text {
             self.last_section().paras.push(Paragraph::new());
             let new_para = self.last_paragraph(false);
             new_para.stylesheet = stylesheet;
-            new_para.style = style;
+            new_para.style = style.clone();
             if in_table {
                 new_para.table = Some(Table::new());
             }
-
-            self.last_paragraph(in_table)
+            let pr = self.last_paragraph(in_table);
+            pr.stylesheet = stylesheet;
+            pr.style = style;
+            pr
         } else if used && (para_style != style || para_stylesheet != stylesheet) {
             {
                 if self.last_line().bytes.is_empty() {
@@ -258,6 +281,7 @@ impl Text {
             new_para
         } else {
             let para = self.last_paragraph(in_table);
+
             if para.stylesheet.is_none() {
                 para.stylesheet = stylesheet;
             }
@@ -420,19 +444,89 @@ impl Text {
             border.width = border_width;
         }
     }
+    pub fn set_row_last(&mut self) {
+        let table = &mut self.last_paragraph(false).table;
+        if let Some(table) = table {
+            let mut last_row = table.last_row();
+
+            last_row.is_last = true;
+        }
+    }
+    pub fn fit_text(&mut self, twips: i32) {
+        let line = &mut self.last_line();
+
+        if twips > 0 {
+            line.fit_text = Some(Twips::from(twips as usize));
+        }
+    }
     pub fn set_cell_right(&mut self, right: Twips) {
         let table = &mut self.last_paragraph(false).table;
         if let Some(table) = table {
             let mut last_row = table.last_row();
             if last_row.cell_opt_pos == 0 {
                 last_row.cells[0].opts.right = Some(right);
-            } else {
-                if let Some(opt) = last_row.cell_opts.get_mut(last_row.cell_opt_pos) {
-                    opt.right = Some(right);
-                }
+            } else if let Some(opt) = last_row.cell_opts.get_mut(last_row.cell_opt_pos) {
+                opt.right = Some(right);
             }
             last_row.cell_opt_pos = last_row.cell_opt_pos + 1;
             last_row.cell_opts.push(TableCellOption::new());
+        }
+    }
+    pub fn set_cell_vert_align(&mut self, align: CellVerticalAlignment) {
+        let table = &mut self.last_paragraph(false).table;
+        if let Some(table) = table {
+            let mut last_row = table.last_row();
+            if last_row.cell_opt_pos == 0 {
+                last_row.cells[0].opts.vert_align = align;
+            } else if let Some(opt) = last_row.cell_opts.get_mut(last_row.cell_opt_pos) {
+                opt.vert_align = align;
+            }
+        }
+    }
+    pub fn set_cell_vert_merge_root(&mut self) {
+        let table = &mut self.last_paragraph(false).table;
+        if let Some(table) = table {
+            let mut last_row = table.last_row();
+            if last_row.cell_opt_pos == 0 {
+                last_row.cells[0].opts.vert_merge_root = true;
+            } else if let Some(opt) = last_row.cell_opts.get_mut(last_row.cell_opt_pos) {
+                opt.vert_merge_root = true;
+            }
+        }
+    }
+    pub fn set_cell_vert_merged_cell(&mut self) {
+        let table = &mut self.last_paragraph(false).table;
+        if let Some(table) = table {
+            let mut last_row = table.last_row();
+
+            if last_row.cell_opt_pos == 0 {
+                last_row.cells[0].opts.vert_merged_cell = true;
+            } else if let Some(opt) = last_row.cell_opts.get_mut(last_row.cell_opt_pos) {
+                opt.vert_merged_cell = true;
+            }
+        }
+    }
+    pub fn set_cell_horiz_merge_root(&mut self) {
+        let table = &mut self.last_paragraph(false).table;
+        if let Some(table) = table {
+            let mut last_row = table.last_row();
+            if last_row.cell_opt_pos == 0 {
+                last_row.cells[0].opts.horiz_merge_root = true;
+            } else if let Some(opt) = last_row.cell_opts.get_mut(last_row.cell_opt_pos) {
+                opt.horiz_merge_root = true;
+            }
+        }
+    }
+    pub fn set_cell_horiz_merged_cell(&mut self) {
+        let table = &mut self.last_paragraph(false).table;
+        if let Some(table) = table {
+            let mut last_row = table.last_row();
+
+            if last_row.cell_opt_pos == 0 {
+                last_row.cells[0].opts.horiz_merged_cell = true;
+            } else if let Some(opt) = last_row.cell_opts.get_mut(last_row.cell_opt_pos) {
+                opt.horiz_merged_cell = true;
+            }
         }
     }
 }

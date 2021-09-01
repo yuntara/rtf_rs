@@ -4,12 +4,28 @@ pub use super::*;
 pub struct TableCellOption {
     pub border: Option<CellBorder>,
     pub right: Option<Twips>,
+    pub vert_align: CellVerticalAlignment,
+    pub vert_merge_root: bool,
+    pub vert_merged_cell: bool,
+    pub horiz_merge_root: bool,
+    pub horiz_merged_cell: bool,
+}
+#[derive(Clone, Debug)]
+pub enum CellVerticalAlignment {
+    Top,
+    Center,
+    Bottom,
 }
 impl TableCellOption {
     pub fn new() -> Self {
         Self {
             border: None,
             right: None,
+            vert_merge_root: false,
+            vert_merged_cell: false,
+            horiz_merge_root: false,
+            horiz_merged_cell: false,
+            vert_align: CellVerticalAlignment::Top,
         }
     }
 }
@@ -36,6 +52,7 @@ pub struct TableRow {
     pub border: Option<RowBorder>,
     pub cell_opt_pos: usize,
     pub cell_opts: Vec<TableCellOption>,
+    pub is_last: bool,
 }
 impl TableRow {
     pub fn new() -> TableRow {
@@ -44,6 +61,7 @@ impl TableRow {
             border: None,
             cell_opt_pos: 0,
             cell_opts: vec![TableCellOption::new()],
+            is_last: false,
         }
     }
     pub fn add_cell(&mut self) {

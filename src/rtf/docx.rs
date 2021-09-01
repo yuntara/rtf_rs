@@ -24,6 +24,15 @@ impl Docx for Rtf {
                 }
             }
         }
+        impl std::convert::Into<docx_rs::VAlignType> for CellVerticalAlignment {
+            fn into(self) -> docx_rs::VAlignType {
+                match self {
+                    Self::Top => VAlignType::Top,
+                    Self::Center => VAlignType::Center,
+                    Self::Bottom => VAlignType::Bottom,
+                }
+            }
+        }
         impl std::convert::Into<docx_rs::BorderType> for table_border::BorderType {
             fn into(self) -> docx_rs::BorderType {
                 match self {
@@ -132,6 +141,7 @@ impl Docx for Rtf {
                         _ => crate::rtf::Text::decode_line(encoding, &line),
                     };
                     let run_font = RunFonts::new().east_asia(font.font_name.clone());
+
                     run = run.fonts(run_font);
                     // println!("{} {:?} {:?}", text, encoding, font.charset);
                     text
@@ -216,7 +226,7 @@ impl Docx for Rtf {
                             let mut rows: Vec<docx_rs::TableRow> = vec![];
                             let mut border = None;
                             let mut grid: Vec<usize> = vec![];
-                            let mut make_grid = true;
+                            let mut make_grid = false;
 
                             for rtf_row in table.rows {
                                 if rtf_row.border.is_some() {
@@ -228,6 +238,7 @@ impl Docx for Rtf {
                                 }
                                 let mut cells: Vec<docx_rs::TableCell> = vec![];
                                 let cell_len = rtf_row.cells.len();
+
                                 for (cell_index, rtf_cell) in rtf_row.cells.into_iter().enumerate()
                                 {
                                     if cell_index == cell_len - 1 && rtf_cell.is_empty() {
@@ -250,9 +261,33 @@ impl Docx for Rtf {
                                     } else {
                                     }
 
+                                    if rtf_cell.opts.vert_merge_root {
+                                        cell = cell.vertical_merge(VMergeType::Restart);
+                                    } else if rtf_cell.opts.vert_merged_cell {
+                                        cell = cell.vertical_merge(VMergeType::Continue);
+                                    } else {
+                                    }
+                                    cell = cell.vertical_align(rtf_cell.opts.vert_align.into());
+
                                     for para in rtf_cell.paras {
+                                        let para_style =
+                                            para.style.as_ref().unwrap_or(&stylesheet_para);
+                                        let align = para_style
+                                            .align
+                                            .as_ref()
+                                            .or_else(|| stylesheet_para.align.as_ref());
+
+                                        let first_indent = para_style
+                                            .first_indent
+                                            .as_ref()
+                                            .or_else(|| stylesheet_para.first_indent.as_ref());
+                                        let special_indent = first_indent.map(|indent| {
+                                            SpecialIndentType::FirstLine(indent.clone())
+                                        });
+
                                         let make_paragrah = || {
                                             let mut p = Paragraph::new();
+
                                             if let Some(align) = align {
                                                 p = p.align(align.clone().into());
                                             }
@@ -271,15 +306,10 @@ impl Docx for Rtf {
                                         let mut runs: VecDeque<Run> = VecDeque::new();
                                         let process_run =
                                             |cell: TableCell, runs: &mut VecDeque<Run>| {
-                                                if runs.len() > 0 {
+                                                if !runs.is_empty() {
                                                     let mut p = make_paragrah();
-                                                    loop {
-                                                        if let Some(run) = runs.pop_front() {
-                                                            // println!("cell run {:?}", run);
-                                                            p = p.add_run(run.clone());
-                                                        } else {
-                                                            break;
-                                                        }
+                                                    while let Some(run) = runs.pop_front() {
+                                                        p = p.add_run(run.clone());
                                                     }
                                                     cell.add_paragraph(p)
                                                 } else {
@@ -307,7 +337,7 @@ impl Docx for Rtf {
                                         cell = process_run(cell, &mut runs);
                                     }
                                     if let Some(width) = width {
-                                        cell = cell.width(width, WidthType::Auto);
+                                        cell = cell.width(width, WidthType::DXA);
                                         if make_grid {
                                             grid.push(Twips::from_px(width).into());
                                         }
@@ -316,10 +346,11 @@ impl Docx for Rtf {
                                         grid = vec![];
                                         make_grid = false;
                                     }
-                                    // println!("{:?}", cell);
+
                                     cells.push(cell);
                                 }
                                 let row = docx_rs::TableRow::new(cells);
+
                                 rows.push(row);
                                 make_grid = false;
                             }

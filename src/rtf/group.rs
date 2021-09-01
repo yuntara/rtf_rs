@@ -374,7 +374,14 @@ impl GroupState {
             } else {
                 let last_paragraph = text.last_paragraph(false);
                 if let Some(table) = last_paragraph.table.as_mut() {
-                    table.add_row();
+                    if table.last_row().is_last {
+                        let mut p = Paragraph::new();
+                        p.table = Some(Table::new());
+                        text.last_section().paras.push(Paragraph::new());
+                        text.last_section().paras.push(p);
+                    } else {
+                        table.add_row();
+                    }
                 } else {
                     last_paragraph.table = Some(Table::new());
                 }
@@ -407,6 +414,32 @@ impl GroupState {
             text.set_border_width(self.border_select.clone(), border_width);
         }
     }
+    pub fn set_row_last(&mut self) {
+        let dest_name = match self.get_destination_name() {
+            Some(name) => name.clone(),
+            None => {
+                warn!("Document format error: Document text found outside of any document group",);
+                return;
+            }
+        };
+        if let Some(Destination::Text(text)) = (*self.destinations).borrow_mut().get_mut(&dest_name)
+        {
+            text.set_row_last();
+        }
+    }
+    pub fn fit_text(&mut self, twips: i32) {
+        let dest_name = match self.get_destination_name() {
+            Some(name) => name.clone(),
+            None => {
+                warn!("Document format error: Document text found outside of any document group",);
+                return;
+            }
+        };
+        if let Some(Destination::Text(text)) = (*self.destinations).borrow_mut().get_mut(&dest_name)
+        {
+            text.fit_text(twips);
+        }
+    }
     pub fn set_cell_right(&mut self, right: Twips) {
         let dest_name = match self.get_destination_name() {
             Some(name) => name.clone(),
@@ -418,6 +451,71 @@ impl GroupState {
         if let Some(Destination::Text(text)) = (*self.destinations).borrow_mut().get_mut(&dest_name)
         {
             text.set_cell_right(right);
+        }
+    }
+    pub fn set_cell_vert_merge_root(&mut self) {
+        let dest_name = match self.get_destination_name() {
+            Some(name) => name.clone(),
+            None => {
+                warn!("Document format error: Document text found outside of any document group",);
+                return;
+            }
+        };
+        if let Some(Destination::Text(text)) = (*self.destinations).borrow_mut().get_mut(&dest_name)
+        {
+            text.set_cell_vert_merge_root();
+        }
+    }
+    pub fn set_cell_vert_align(&mut self, align: CellVerticalAlignment) {
+        let dest_name = match self.get_destination_name() {
+            Some(name) => name.clone(),
+            None => {
+                warn!("Document format error: Document text found outside of any document group",);
+                return;
+            }
+        };
+        if let Some(Destination::Text(text)) = (*self.destinations).borrow_mut().get_mut(&dest_name)
+        {
+            text.set_cell_vert_align(align);
+        }
+    }
+    pub fn set_cell_vert_merged_cell(&mut self) {
+        let dest_name = match self.get_destination_name() {
+            Some(name) => name.clone(),
+            None => {
+                warn!("Document format error: Document text found outside of any document group",);
+                return;
+            }
+        };
+        if let Some(Destination::Text(text)) = (*self.destinations).borrow_mut().get_mut(&dest_name)
+        {
+            text.set_cell_vert_merged_cell();
+        }
+    }
+    pub fn set_cell_horiz_merge_root(&mut self) {
+        let dest_name = match self.get_destination_name() {
+            Some(name) => name.clone(),
+            None => {
+                warn!("Document format error: Document text found outside of any document group",);
+                return;
+            }
+        };
+        if let Some(Destination::Text(text)) = (*self.destinations).borrow_mut().get_mut(&dest_name)
+        {
+            text.set_cell_horiz_merge_root();
+        }
+    }
+    pub fn set_cell_horiz_merged_cell(&mut self) {
+        let dest_name = match self.get_destination_name() {
+            Some(name) => name.clone(),
+            None => {
+                warn!("Document format error: Document text found outside of any document group",);
+                return;
+            }
+        };
+        if let Some(Destination::Text(text)) = (*self.destinations).borrow_mut().get_mut(&dest_name)
+        {
+            text.set_cell_horiz_merged_cell();
         }
     }
     pub fn set_value(&mut self, name: &str, value: Option<i32>) {
@@ -433,6 +531,9 @@ impl GroupState {
                 self.set_row();
             }
             "intbl" => {}
+            "lastrow" => {
+                self.set_row_last();
+            }
             "trbrdrt" => self.border_select = BorderSelect::RowTop,
             "trbrdrl" => self.border_select = BorderSelect::RowLeft,
             "trbrdrb" => self.border_select = BorderSelect::RowBottom,
@@ -452,6 +553,12 @@ impl GroupState {
             "brdrhair" => self.set_border_type(BorderType::Hairline),
             "brdrnone" => self.set_border_type(BorderType::None),
             "brdrw" => self.set_border_width(value.unwrap_or(0) as usize),
+            "clvmgf" => self.set_cell_vert_merge_root(),
+            "clvmrg" => self.set_cell_vert_merged_cell(),
+            "clvertalt" => self.set_cell_vert_align(CellVerticalAlignment::Top),
+            "clvertalc" => self.set_cell_vert_align(CellVerticalAlignment::Center),
+            "clvertalb" => self.set_cell_vert_align(CellVerticalAlignment::Bottom),
+            "fittext" => self.fit_text(value.unwrap_or(-1)),
             "cellx" => {
                 if let Some(value) = value {
                     self.set_cell_right((value as usize).into())
