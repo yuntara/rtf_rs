@@ -54,11 +54,8 @@ impl Destination {
             return;
         }
         if let Destination::Text(text) = self {
-            if !in_table {
-                text.last_or_new_paragraph(stylesheet, para_style, in_table);
-            } else {
-                /* NOP */
-            }
+            text.last_or_new_paragraph(stylesheet, para_style, in_table);
+
             {
                 let base_encoding = text.encoding;
                 let line = text.last_or_new_line(font, style, Some(encoding));
